@@ -1,5 +1,5 @@
 # Xtool
-Xtool.It can add a "*.xml" file to extend itself!
+Xtool.It can add a "*.xml" & a "*.xcss" file to extend itself!
 
 ## A Simple Demo Of The XML
 
