@@ -5,11 +5,28 @@ namespace Xtool
     public partial class Form1 : Form
     {
         XmlDocument xml;
+        XmlDocument xmlDoc;
         XmlNode node;
         XmlNode exename;
         XmlNode lpath;
+        XmlNode XCSS;
         string EXE;
         string Lpath;
+        string XCSSpath;
+        Dictionary<string, MessageBoxButtons> mapMSGButton;
+        Dictionary<string, MessageBoxIcon> mapMSGIcon;
+        
+        public struct StyleConrtol
+        {
+            public Font Font;
+            public float FontSize;
+            public StyleConrtol(Font font,float fsize)
+            {
+                Font = font;
+                FontSize = fsize;
+            }
+        }
+        public StyleConrtol[] stc;
         struct Ctl
         {
             public Control control;
@@ -29,10 +46,26 @@ namespace Xtool
             InitializeComponent();
         }
 
+        public void readXCSS(string path)
+        {
+            stc = new StyleConrtol[1024];
+            xmlDoc = new XmlDocument();
+            XmlReaderSettings xmlReaderSettings = new XmlReaderSettings();
+            xmlReaderSettings.IgnoreWhitespace = true;
+            xmlReaderSettings.IgnoreComments = true;
+            XmlReader xmlReader = XmlReader.Create(path, xmlReaderSettings);
+            xmlDoc.Load(xmlReader);
+            foreach(XmlNode xmlNode in xmlDoc.DocumentElement.ChildNodes)
+            {
+                stc[Convert.ToInt32(xmlNode.Attributes["StyleId"].Value)] = new StyleConrtol(new Font(xmlNode.Attributes["Font"].Value, Convert.ToSingle(xmlNode.Attributes["Fsize"].Value)), Convert.ToSingle(xmlNode.Attributes["Fsize"].Value));
+            }
+
+        }
         public void rereadxml(string path)
         {
             Ctls = new List<Ctl>();
             Ctls.Clear();
+            
             foreach (Control control in this.Controls)
             {
                 control.Hide();
@@ -46,6 +79,12 @@ namespace Xtool
             node = xml.SelectSingleNode("Xtool/Control");
             exename = xml.SelectSingleNode("Xtool/EXEname");
             lpath = xml.SelectSingleNode("Xtool/Lpath");
+            XCSS = xml.SelectSingleNode("Xtool/DoeshaveXCSS");
+            if(XCSS.Attributes["Does"].Value == "True")
+            {
+                XCSSpath = XCSS.InnerText;
+                readXCSS(XCSSpath);
+            }
             Lpath = lpath.InnerText;
             fileSystemWatcher1.Filter = "*" + lpath.Attributes["Filter"].Value;
             fileSystemWatcher1.Path = Lpath;
@@ -67,7 +106,11 @@ namespace Xtool
                                     button.Location = new Point(Convert.ToInt32(xmlAttributeCollection["X"].Value), Convert.ToInt32(xmlAttributeCollection["Y"].Value));
                                     button.Width = Convert.ToInt32(xmlAttributeCollection["Width"].Value);
                                     button.Height = Convert.ToInt32(xmlAttributeCollection["Height"].Value);
-                                    if(xmlAttributeCollection["Font"].Value != null && xmlAttributeCollection["Emsize"].Value != null)
+                                    if(Convert.ToInt32(xmlAttributeCollection["StyleId"].Value) != -1)
+                                    {
+                                        button.Font = stc[Convert.ToInt32(xmlAttributeCollection["StyleId"].Value)].Font;
+                                    }
+                                    else
                                     {
                                         button.Font = new Font(xmlAttributeCollection["Font"].Value, (float)Convert.ToDouble(xmlAttributeCollection["Emsize"].Value));
                                     }
@@ -84,15 +127,57 @@ namespace Xtool
                                     label.Location = new Point(Convert.ToInt32(xmlAttributeCollection["X"].Value), Convert.ToInt32(xmlAttributeCollection["Y"].Value));
                                     label.Width = Convert.ToInt32(xmlAttributeCollection["Width"].Value);
                                     label.Height = Convert.ToInt32(xmlAttributeCollection["Height"].Value);
-                                    label.Font = new Font(xmlAttributeCollection["Font"].Value, (float)Convert.ToDouble(xmlAttributeCollection["Emsize"].Value));
+                                    if (Convert.ToInt32(xmlAttributeCollection["StyleId"].Value) != -1)
+                                    {
+                                        label.Font = stc[Convert.ToInt32(xmlAttributeCollection["StyleId"].Value)].Font;
+                                    }
+                                    else
+                                    {
+                                        label.Font = new Font(xmlAttributeCollection["Font"].Value, (float)Convert.ToDouble(xmlAttributeCollection["Emsize"].Value));
+                                    }
                                     label.Show();
                                     Ctls.Add(new Ctl(label, Convert.ToInt32(xmlAttributeCollection["Id"].Value), label.GetType()));
                                     label.Click += Xtool_click;
                                     break;
                                 }
+                            case "TextBox":
+                                {
+                                    TextBox textBox = new TextBox();
+                                    textBox.Parent = this;
+                                    textBox.Text = node.InnerText;
+                                    textBox.Location = new Point(Convert.ToInt32(xmlAttributeCollection["X"].Value), Convert.ToInt32(xmlAttributeCollection["Y"].Value));
+                                    textBox.Width = Convert.ToInt32(xmlAttributeCollection["Width"].Value);
+                                    textBox.Height = Convert.ToInt32(xmlAttributeCollection["Height"].Value);
+                                    textBox.Font = new Font(xmlAttributeCollection["Font"].Value, (float)Convert.ToDouble(xmlAttributeCollection["Emsize"].Value));
+                                    if (Convert.ToInt32(xmlAttributeCollection["StyleId"].Value) != -1)
+                                    {
+                                        textBox.Font = stc[Convert.ToInt32(xmlAttributeCollection["StyleId"].Value)].Font;
+                                    }
+                                    else
+                                    {
+                                        textBox.Font = new Font(xmlAttributeCollection["Font"].Value, (float)Convert.ToDouble(xmlAttributeCollection["Emsize"].Value));
+                                    }
+                                    textBox.Multiline = xmlAttributeCollection["Ismutiline"].Value == "true" ? true : false;
+                                    textBox.Show();
+                                    Ctls.Add(new Ctl(textBox, Convert.ToInt32(xmlAttributeCollection["Id"].Value), textBox.GetType()));
+                                    textBox.TextChanged += Xtool_click;
+                                    break;
+                                }
+                            case "PictureBox":
+                                {
+                                    PictureBox pictureBox = new PictureBox();
+                                    Bitmap bitmap = new Bitmap(xmlAttributeCollection["Path"].Value);
+                                    pictureBox.Image = bitmap;
+                                    pictureBox.Location = new Point(Convert.ToInt32(xmlAttributeCollection["X"].Value), Convert.ToInt32(xmlAttributeCollection["Y"].Value));
+                                    pictureBox.Width = Convert.ToInt32(xmlAttributeCollection["Width"].Value);
+                                    pictureBox.Height = Convert.ToInt32(xmlAttributeCollection["Height"].Value);
+                                    pictureBox.Show();
+                                    Ctls.Add(new Ctl(pictureBox, Convert.ToInt32(xmlAttributeCollection["Id"].Value), pictureBox.GetType()));
+                                    break;
+                                }
                             case "MSGBox":
                                 {
-                                    MessageBox.Show(node.InnerText, node.Attributes["Title"].Value);
+                                    MessageBox.Show(node.InnerText, node.Attributes["Title"].Value, mapMSGButton[xmlAttributeCollection["MSGButton"].Value], mapMSGIcon[xmlAttributeCollection["MSGIcon"].Value]);
                                     break;
                                 }
                         }
@@ -138,12 +223,37 @@ namespace Xtool
 
         private void Form1_Load(object sender, EventArgs e)
         {
-
+            mapMSGIcon = new Dictionary<string, MessageBoxIcon>();
+            mapMSGButton = new Dictionary<string, MessageBoxButtons>();
+            mapMSGButton.Add("OK", MessageBoxButtons.OK);
+            mapMSGButton.Add("OKCancel", MessageBoxButtons.OKCancel);
+            mapMSGButton.Add("YesNo", MessageBoxButtons.YesNo);
+            mapMSGButton.Add("YesNoCancel", MessageBoxButtons.YesNoCancel);
+            mapMSGButton.Add("CancelTryContinue", MessageBoxButtons.CancelTryContinue);
+            mapMSGButton.Add("AbortRetryIgnore", MessageBoxButtons.AbortRetryIgnore);
+            mapMSGButton.Add("RetryCancel", MessageBoxButtons.RetryCancel);
+            mapMSGIcon.Add("Information", MessageBoxIcon.Information);
+            mapMSGIcon.Add("Warning", MessageBoxIcon.Warning);
+            mapMSGIcon.Add("Question", MessageBoxIcon.Question);
+            mapMSGIcon.Add("Hand", MessageBoxIcon.Hand);
+            mapMSGIcon.Add("Stop", MessageBoxIcon.Stop);
+            mapMSGIcon.Add("Asterisk", MessageBoxIcon.Asterisk);
+            mapMSGIcon.Add("Error",MessageBoxIcon.Error);
         }
 
         private void fileSystemWatcher1_Changed(object sender, FileSystemEventArgs e)
         {
             rereadxml(e.FullPath);
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start(@"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe", linkLabel1.Text);
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
         }
     }
 }
